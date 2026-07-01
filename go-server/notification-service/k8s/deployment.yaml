@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: notification-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SMTP_HOST
+          value: "smtp.example.com"
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_SENDER
+          value: "noreply@example.com"
+        - name: SMTP_USERNAME
+          value: "user@example.com"
+        - name: SMTP_PASSWORD
+          value: "password"

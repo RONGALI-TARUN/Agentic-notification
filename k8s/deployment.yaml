@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-services
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-services
+  template:
+    metadata:
+      labels:
+        app: notification-services
+    spec:
+      containers:
+      - name: go-notification-service
+        image: notification-service-go:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SMTP_HOST
+          value: "smtp.example.com"
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_USERNAME
+          value: "user@example.com"
+        - name: SMTP_PASSWORD
+          value: "password"
+        - name: SMTP_SENDER
+          value: "noreply@example.com"
+      - name: java-notification-service
+        image: notification-service-java:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SMTP_HOST
+          value: "smtp.example.com"
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_USERNAME
+          value: "user@example.com"
+        - name: SMTP_PASSWORD
+          value: "password"
+        - name: SMTP_SENDER
+          value: "noreply@example.com"
