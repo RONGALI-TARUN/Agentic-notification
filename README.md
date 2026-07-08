@@ -1,53 +1,28 @@
-# Multi-Service Notification Repos
+# Attention Orchestration Platform
 
-This workspace contains two notification service implementations:
+This workspace now contains the initial milestone-1 foundation for an attention orchestration platform.
 
-- `go-server/notification-service` — generic Go notification service with Docker and Kubernetes support
-- `java-server/production` — Maven-based Java notification service with Docker and Kubernetes support
+## Included in milestone 1
+
+- A Go API service with a health endpoint at /health
+- A lightweight React + TypeScript web shell for the future UI
+- Local PostgreSQL via Docker Compose
+- CI wiring for the Go service
 
 ## Structure
 
-- `go-server/notification-service/cmd/notification-service` — Go application entrypoint
-- `go-server/notification-service/pkg` — Go config, notification, server, and utility packages
-- `go-server/notification-service/Dockerfile` — Go Docker build
-- `go-server/notification-service/docker-compose.yml` — local compose setup
-- `go-server/notification-service/k8s` — Kubernetes manifests
-- `go-server/notification-service/.github/workflows` — Go CI workflow
+- [go-server/notification-service](go-server/notification-service) — Go API service and Docker setup
+- [apps/web](apps/web) — Vite + React + TypeScript frontend shell
+- [docs/milestone-1.md](docs/milestone-1.md) — milestone plan and review notes
 
-- `java-server/production/src/main/java` — Java source tree in packages
-- `java-server/production/pom.xml` — Maven build file
-- `java-server/production/Dockerfile` — Java Docker build
-- `java-server/production/docker-compose.yml` — local Java compose setup
-- `java-server/production/k8s` — Kubernetes manifests
-- `java-server/production/.github/workflows/build.yml` — Java CI workflow
-
-## Running
-
-### Go
+## Run locally
 
 ```bash
-cd go-server/notification-service/cmd/notification-service
-go run main.go
+docker compose up --build
 ```
 
-### Java
+Then open:
 
-```bash
-cd java-server/production
-mvn -B package
-java -cp target/notification-service-0.1.0.jar com.example.notification.server.Application
-```
+- API: http://localhost:8080/health
+- UI: http://localhost:3000
 
-## Docker
-
-```bash
-docker build -t notification-service:go ./go-server/notification-service
-docker build -t notification-service-java ./java-server/production
-```
-
-## Kubernetes
-
-```bash
-kubectl apply -f go-server/notification-service/k8s
-kubectl apply -f java-server/production/k8s
-```
