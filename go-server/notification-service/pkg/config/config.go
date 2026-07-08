@@ -1,12 +1,14 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
 
 type Config struct {
 	Address         string
+	APIKey          string
 	SMTPHost        string
 	SMTPPort        int
 	SMTPUsername    string
@@ -19,20 +21,31 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	port := 8080
 	if v := os.Getenv("PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
-			port = p
+		p, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid PORT: %w", err)
 		}
+		if p < 1 || p > 65535 {
+			return nil, fmt.Errorf("invalid PORT: out of range")
+		}
+		port = p
 	}
 
 	smtpPort := 587
 	if v := os.Getenv("SMTP_PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
-			smtpPort = p
+		p, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid SMTP_PORT: %w", err)
 		}
+		if p < 1 || p > 65535 {
+			return nil, fmt.Errorf("invalid SMTP_PORT: out of range")
+		}
+		smtpPort = p
 	}
 
 	return &Config{
 		Address:         ":" + strconv.Itoa(port),
+		APIKey:          os.Getenv("API_KEY"),
 		SMTPHost:        os.Getenv("SMTP_HOST"),
 		SMTPPort:        smtpPort,
 		SMTPUsername:    os.Getenv("SMTP_USERNAME"),

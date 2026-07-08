@@ -10,6 +10,7 @@ go run main.go
 Environment variables:
 
 - `PORT`
+- `API_KEY` - when set, the service requires the `X-API-Key` header for protected routes
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USERNAME`
@@ -17,6 +18,12 @@ Environment variables:
 - `SMTP_SENDER`
 - `SLACK_WEBHOOK_URL`
 - `TEAMS_WEBHOOK_URL`
+
+Health check:
+
+```bash
+curl http://localhost:8080/health
+```
 
 POST `/notify` with JSON:
 

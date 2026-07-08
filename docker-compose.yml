@@ -1,5 +1,14 @@
 version: '3.8'
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: attention
+      POSTGRES_USER: attention
+      POSTGRES_PASSWORD: attention
+    ports:
+      - "5432:5432"
+
   go-notification-service:
     build:
       context: ./go-server/notification-service
@@ -8,11 +17,16 @@ services:
     ports:
       - "8080:8080"
     environment:
+      PORT: 8080
       SMTP_HOST: smtp.example.com
       SMTP_PORT: 587
       SMTP_USERNAME: user@example.com
       SMTP_PASSWORD: password
       SMTP_SENDER: noreply@example.com
+      DATABASE_URL: postgres://attention:attention@postgres:5432/attention
+      API_KEY: local-dev-key
+    depends_on:
+      - postgres
 
   java-notification-service:
     build:
