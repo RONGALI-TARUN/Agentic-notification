@@ -9,12 +9,14 @@ import (
 	"time"
 
 	"github.com/example/notification-service/pkg/config"
+	"github.com/example/notification-service/pkg/db"
 	"github.com/example/notification-service/pkg/delivery"
 	"github.com/example/notification-service/pkg/event"
 	"github.com/example/notification-service/pkg/feedback"
 	"github.com/example/notification-service/pkg/learning"
 	"github.com/example/notification-service/pkg/notification"
 	"github.com/example/notification-service/pkg/notification/impl"
+	"github.com/example/notification-service/pkg/pipeline"
 	"github.com/example/notification-service/pkg/policy"
 	"github.com/example/notification-service/pkg/util"
 )
@@ -27,6 +29,7 @@ type Server struct {
 	feedbackRecorder   feedback.Recorder
 	learningService    *learning.Service
 	policyEngine       *policy.Engine
+	eventPipeline      *pipeline.Pipeline
 	http               *http.Server
 	requestsTotal      atomic.Uint64
 	notificationsTotal atomic.Uint64
@@ -44,25 +47,74 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config) (*Server, error) {
 	var provider delivery.Provider = &delivery.StubProvider{}
 	if cfg != nil && cfg.SMTPHost != "" && cfg.SMTPSender != "" {
 		provider = delivery.NewSMTPProvider(cfg)
 	}
 
-	return &Server{
+	eventRepo, err := initEventRepository(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("init event repository: %w", err)
+	}
+
+	rules, err := loadPolicyRules(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("load policy rules: %w", err)
+	}
+
+	deliverySvc := delivery.NewService(provider)
+	policyEngine := policy.NewEngine(rules)
+
+	s := &Server{
 		cfg:              cfg,
 		service:          impl.NewNotificationService(cfg),
-		deliveryService:  delivery.NewService(provider),
-		eventRepo:        event.NewInMemoryRepository(),
+		deliveryService:  deliverySvc,
+		eventRepo:        eventRepo,
 		feedbackRecorder: feedback.NewInMemoryRecorder(),
 		learningService:  learning.NewService(""),
-		policyEngine: policy.NewEngine([]policy.Rule{{
-			Name: "default-standard",
-			When: policy.RuleCondition{Source: "github"},
-			Then: policy.RuleOutcome{AttentionClass: "standard", Reason: "default routing"},
-		}}),
+		policyEngine:     policyEngine,
+		eventPipeline: pipeline.New(
+			policyEngine,
+			deliverySvc,
+			eventRepo,
+			pipeline.Config{
+				DefaultEmailRecipients: cfg.DefaultEmailRecipients(),
+				SlackWebhookURLs:       cfg.SlackWebhookURLs(),
+			},
+		),
 	}
+	return s, nil
+}
+
+func initEventRepository(cfg *config.Config) (event.Repository, error) {
+	if cfg == nil || cfg.DatabaseURL == "" {
+		return event.NewInMemoryRepository(), nil
+	}
+
+	sqlDB, err := db.Connect(cfg.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Migrate(sqlDB); err != nil {
+		sqlDB.Close()
+		return nil, err
+	}
+	log.Printf("connected to PostgreSQL and ran migrations")
+	return event.NewPostgresRepository(sqlDB), nil
+}
+
+func loadPolicyRules(cfg *config.Config) ([]policy.Rule, error) {
+	if cfg != nil && cfg.RulesPath != "" {
+		rules, err := policy.LoadRulesFromFile(cfg.RulesPath)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("loaded %d policy rules from %s", len(rules), cfg.RulesPath)
+		return rules, nil
+	}
+	log.Printf("using %d built-in default policy rules", len(policy.DefaultRules()))
+	return policy.DefaultRules(), nil
 }
 
 func (s *Server) Run() error {
@@ -172,23 +224,19 @@ func (s *Server) githubWebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.policyEngine != nil {
-		if decision, ok := s.policyEngine.Evaluate(normalized); ok {
-			normalized.Payload["attention_decision"] = map[string]interface{}{
-				"attentionClass": decision.AttentionClass,
-				"reason":         decision.Reason,
-				"matchedRule":    decision.MatchedRule,
-			}
-		}
-	}
-
-	if err := s.eventRepo.Save(normalized); err != nil {
-		log.Printf("event persistence error: %v", err)
+	result, err := s.eventPipeline.Handle(normalized)
+	if err != nil {
+		log.Printf("pipeline error: %v", err)
 		util.WriteJSON(w, http.StatusInternalServerError, util.ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	util.WriteJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+	util.WriteJSON(w, http.StatusAccepted, map[string]interface{}{
+		"status":         "accepted",
+		"eventId":        result.ID,
+		"attentionClass": result.AttentionClass,
+		"decisionState":  result.DecisionState,
+	})
 }
 
 func (s *Server) normalizeGitHubEvent(eventType string, payload []byte) (event.Event, error) {

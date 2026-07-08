@@ -13,7 +13,11 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	svc := server.NewServer(cfg)
+	svc, err := server.NewServer(cfg)
+	if err != nil {
+		log.Fatalf("failed to create server: %v", err)
+	}
+
 	if err := svc.Run(); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}

@@ -24,6 +24,8 @@ services:
       SMTP_PASSWORD: password
       SMTP_SENDER: noreply@example.com
       DATABASE_URL: postgres://attention:attention@postgres:5432/attention
+      RULES_PATH: /app/config/rules.yaml
+      DEFAULT_NOTIFY_EMAIL: ops@example.com
       API_KEY: local-dev-key
     depends_on:
       - postgres

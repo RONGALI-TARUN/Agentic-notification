@@ -11,6 +11,9 @@ Environment variables:
 
 - `PORT`
 - `API_KEY` - when set, the service requires the `X-API-Key` header for protected routes
+- `DATABASE_URL` - PostgreSQL connection string; omit to use in-memory storage
+- `RULES_PATH` - path to YAML policy rules file; omit to use built-in defaults
+- `DEFAULT_NOTIFY_EMAIL` - comma-separated email recipients for critical alerts
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USERNAME`

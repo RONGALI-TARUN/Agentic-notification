@@ -4,18 +4,22 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
-	Address         string
-	APIKey          string
-	SMTPHost        string
-	SMTPPort        int
-	SMTPUsername    string
-	SMTPPassword    string
-	SMTPSender      string
-	SlackWebhookURL string
-	TeamsWebhookURL string
+	Address              string
+	APIKey               string
+	DatabaseURL          string
+	RulesPath            string
+	DefaultNotifyEmail   string
+	SMTPHost             string
+	SMTPPort             int
+	SMTPUsername         string
+	SMTPPassword         string
+	SMTPSender           string
+	SlackWebhookURL      string
+	TeamsWebhookURL      string
 }
 
 func LoadConfig() (*Config, error) {
@@ -44,14 +48,31 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Address:         ":" + strconv.Itoa(port),
-		APIKey:          os.Getenv("API_KEY"),
-		SMTPHost:        os.Getenv("SMTP_HOST"),
-		SMTPPort:        smtpPort,
-		SMTPUsername:    os.Getenv("SMTP_USERNAME"),
-		SMTPPassword:    os.Getenv("SMTP_PASSWORD"),
-		SMTPSender:      os.Getenv("SMTP_SENDER"),
-		SlackWebhookURL: os.Getenv("SLACK_WEBHOOK_URL"),
-		TeamsWebhookURL: os.Getenv("TEAMS_WEBHOOK_URL"),
+		Address:            ":" + strconv.Itoa(port),
+		APIKey:             os.Getenv("API_KEY"),
+		DatabaseURL:        os.Getenv("DATABASE_URL"),
+		RulesPath:          os.Getenv("RULES_PATH"),
+		DefaultNotifyEmail: os.Getenv("DEFAULT_NOTIFY_EMAIL"),
+		SMTPHost:           os.Getenv("SMTP_HOST"),
+		SMTPPort:           smtpPort,
+		SMTPUsername:       os.Getenv("SMTP_USERNAME"),
+		SMTPPassword:       os.Getenv("SMTP_PASSWORD"),
+		SMTPSender:         os.Getenv("SMTP_SENDER"),
+		SlackWebhookURL:    os.Getenv("SLACK_WEBHOOK_URL"),
+		TeamsWebhookURL:    os.Getenv("TEAMS_WEBHOOK_URL"),
 	}, nil
+}
+
+func (c *Config) DefaultEmailRecipients() []string {
+	if c.DefaultNotifyEmail == "" {
+		return nil
+	}
+	return strings.Split(c.DefaultNotifyEmail, ",")
+}
+
+func (c *Config) SlackWebhookURLs() []string {
+	if c.SlackWebhookURL == "" {
+		return nil
+	}
+	return []string{c.SlackWebhookURL}
 }
